@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c1424">
+<meta name="application-name" content="Pi Remote">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Pi Remote</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/static/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="stylesheet" href="/static/style.css?v=0.3.0">
+<script src="/static/app.js?v=0.3.0" defer></script>
+</head><body>
+<div class="shell">
+  <header>
+    <div class="brand"><img class="app-logo" alt="" src="/static/icon-192.png"><div><b>Pi Remote</b><small>Raspberry Pi controller</small></div></div>
+    <div class="connection waiting" aria-live="polite"><span id="light"></span><span id="status">Starting…</span></div>
+  </header>
+  <main id="pairPanel" class="panel hidden">
+    <h1>Pair your phone</h1><p>Scan the one-time QR code displayed on the Pi. Once paired, your phone reconnects automatically.</p>
+    <label for="deviceName">Device name</label><input id="deviceName" autocomplete="off" maxlength="40" value="My phone">
+    <label for="pairCode">8-digit code</label><input id="pairCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="00000000" autocomplete="one-time-code">
+    <button id="pairButton" class="primary">Pair device</button>
+    <p class="hint">Or run <code>python3 ~/.local/share/pi-remote/server.py pair</code> on the Pi.</p>
+    <p id="pairMessage" class="feedback" role="status"></p>
+  </main>
+  <main id="controlPanel" class="hidden">
+    <nav class="tabs" aria-label="Remote modes">
+      <button class="tab active" data-tab="home" aria-selected="true">Home</button>
+      <button class="tab" data-tab="mouse" aria-selected="false">Touchpad</button>
+      <button class="tab" data-tab="keyboard" aria-selected="false">Keyboard</button>
+      <button class="tab" data-tab="moonlight" aria-selected="false">Moonlight</button>
+      <button class="tab" data-tab="apps" aria-selected="false">Apps</button>
+      <button class="tab" data-tab="settings" aria-selected="false">Settings</button>
+    </nav>
+    <section id="tab-home" class="tab-content">
+      <h2>My Pi</h2>
+      <p class="subtle" id="homeStatus">Connect to your Pi to see its status and favourite apps.</p>
+      <div class="stats-grid">
+        <div class="stat"><small>CPU temperature</small><strong id="cpuTemp">—</strong></div>
+        <div class="stat"><small>CPU use</small><strong id="cpuUse">—</strong></div>
+        <div class="stat"><small>Memory use</small><strong id="memUse">—</strong></div>
+        <div class="stat"><small>Uptime</small><strong id="uptime">—</strong></div>
+      </div>
+      <div class="section-title">Quick launch</div>
+      <div id="homeFavorites" class="apps-grid" aria-live="polite"></div>
+      <div class="buttons two"><button id="quickMoonlight" class="primary">Launch Moonlight</button><button id="homeMouse">Open touchpad</button></div>
+      <div class="section-title">System</div>
+      <div class="buttons two"><button id="restartPi" class="caution">Restart Pi</button><button id="shutdownPi" class="caution">Shut down Pi</button></div>
+      <p class="subtle tiny" id="powerHelp">Power buttons require opt-in on the Pi and an additional confirmation.</p>
+      <p id="systemMessage" class="feedback" role="status"></p>
+    </section>
+    <section id="tab-mouse" class="tab-content hidden">
+      <div class="instruction">One finger moves · Tap clicks · Two fingers scroll or right-click</div>
+      <div class="touch-layout">
+        <div id="pad" aria-label="Touchpad; swipe to move, tap to click, two fingers to scroll"><div class="pad-art">⌁</div><b>TOUCHPAD</b><small>Double-tap and hold to drag</small></div>
+        <div id="scroll" aria-label="Vertical scroll strip"><span>↑</span><b>SCROLL</b><span>↓</span></div>
+      </div>
+      <div class="buttons three"><button id="leftClick">Left click</button><button id="rightClick">Right click</button><button id="dragButton" aria-pressed="false">Drag: off</button></div>
+    </section>
+    <section id="tab-keyboard" class="tab-content hidden">
+      <h2>Keyboard</h2>
+      <p class="subtle">Send short text with simulated keystrokes, or use the clipboard for longer text and Unicode.</p>
+      <label for="typeInput">Type on Pi (US keyboard layout)</label>
+      <textarea id="typeInput" rows="3" maxlength="4000" placeholder="Type or paste text here…" spellcheck="false"></textarea>
+      <div class="buttons two"><button id="sendButton" class="primary">Type text on Pi</button><button id="clearText">Clear</button></div>
+      <div class="section-title">Special keys</div>
+      <div class="keyrow"><button data-key="enter">Enter ↵</button><button data-key="backspace">⌫</button><button data-key="escape">Esc</button><button data-key="tab">Tab</button><button data-key="space">Space</button></div>
+      <div class="keyrow"><button data-key="left">←</button><button data-key="up">↑</button><button data-key="down">↓</button><button data-key="right">→</button><button data-key="delete">Del</button></div>
+      <div class="section-title">Shortcuts</div>
+      <div class="keyrow"><button data-combo="ctrl+a">Ctrl+A</button><button data-combo="ctrl+c">Ctrl+C</button><button data-combo="ctrl+v">Ctrl+V</button><button data-combo="ctrl+z">Ctrl+Z</button><button data-combo="alt+tab">Alt+Tab</button></div>
+      <div class="section-title">Clipboard <span class="subtle">(requires wl-clipboard on Pi)</span></div>
+      <div class="buttons two"><button id="pasteToPi">Paste text to Pi</button><button id="copyToPi">Copy text to Pi clipboard</button></div>
+      <div class="buttons two"><button id="readPhoneClipboard">Get phone clipboard</button><button id="readPiClipboard">Get Pi clipboard</button></div>
+      <button id="copyToPhone" class="full">Copy field to phone clipboard</button>
+      <p id="clipboardHelp" class="subtle tiny">You can always paste text manually into the field above.</p>
+      <p id="keyboardMessage" class="feedback" role="status"></p>
+    </section>
+    <section id="tab-moonlight" class="tab-content hidden">
+      <h2>Moonlight remote</h2>
+      <p class="subtle">Use navigation keys in Moonlight, its streamed desktop, or another focused app. Controls are sent to the Pi.</p>
+      <div class="dpad" aria-label="Directional pad">
+        <button class="up" data-repeat-key="up" aria-label="Up">▲</button>
+        <button class="left" data-repeat-key="left" aria-label="Left">◀</button>
+        <button class="ok primary" data-key="enter">OK</button>
+        <button class="right" data-repeat-key="right" aria-label="Right">▶</button>
+        <button class="down" data-repeat-key="down" aria-label="Down">▼</button>
+      </div>
+      <div class="buttons two"><button data-key="escape">Back / Esc</button><button data-key="tab">Tab</button></div>
+      <div class="buttons two"><button data-key="f11">Fullscreen (F11)</button><button data-combo="super+d">Desktop (Super+D)</button></div>
+      <div class="section-title">Media keys</div>
+      <div class="buttons three"><button data-key="volumedown">Volume −</button><button data-key="mute">Mute</button><button data-key="volumeup">Volume +</button></div>
+      <button class="full" data-key="playpause">Play / Pause</button>
+      <p class="subtle tiny">Volume and fullscreen shortcuts depend on what the focused app supports. Hold an arrow to repeat.</p>
+    </section>
+    <section id="tab-apps" class="tab-content hidden">
+      <h2>Applications</h2>
+      <p class="subtle">Discover apps on your Pi, pin favourites to Home, reorder them or hide ones you don't need. Changes stay on this phone.</p>
+      <label for="appsSearch">Find an application</label><input id="appsSearch" type="search" placeholder="Search installed apps…" autocomplete="off">
+      <label class="checkline"><input id="showHiddenApps" type="checkbox"> Show hidden apps</label>
+      <div id="appsList" class="apps-grid" aria-live="polite"><p class="subtle">Connect to the Pi to find applications.</p></div>
+      <button id="refreshApps" class="full">Refresh applications</button>
+      <p id="appsMessage" class="feedback" role="status"></p>
+      <p class="subtle tiny">Apps open in your Pi's logged-in graphical session. Applications are discovered from installed .desktop entries; the phone cannot submit a command or executable path.</p>
+    </section>
+    <section id="tab-settings" class="tab-content hidden">
+      <h2>Preferences</h2>
+      <label for="sensitivity">Cursor speed <output id="speedValue">1.7×</output></label>
+      <input id="sensitivity" type="range" min="0.5" max="3.5" step="0.1" value="1.7">
+      <label class="checkline"><input id="naturalScroll" type="checkbox" checked> Swipe up to scroll up</label>
+      <label class="checkline"><input id="haptics" type="checkbox" checked> Haptic feedback on taps (if supported)</label>
+      <h2>Android installation</h2>
+      <p id="installHelp" class="subtle">Checking installation options…</p>
+      <button id="installButton" class="primary hidden full">Install Pi Remote</button>
+      <h2>System controls</h2>
+      <p class="subtle tiny">To enable Restart/Shut down, opt in on the Pi by adding <code>PI_REMOTE_ALLOW_POWER=1</code> to <code>~/.config/pi-remote/runtime.env</code> and restarting the Pi Remote service. Your Pi account must also have systemd power permissions.</p>
+      <h2>Connection</h2><p class="subtle">The pairing is saved on this phone and never expires automatically. Don't clear Chrome's site storage.</p>
+      <button id="reconnectButton" class="full">Reconnect now</button>
+      <p class="subtle tiny">Only use Pi Remote on your trusted network. Port 3100 must not be forwarded to the internet.</p>
+    </section>
+  </main>
+  <footer>Paired once · Automatically reconnects · Wayland compatible</footer>
+</div>
+</body></html>

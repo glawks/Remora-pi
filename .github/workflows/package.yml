@@ -1,0 +1,36 @@
+name: Package Remora Pi
+
+on:
+  push:
+    branches: [dev]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle Pi installation source
+        shell: bash
+        run: |
+          mkdir -p dist/Remora-pi
+          cp -a server.py qr_display.py install.sh README.md CHANGELOG.md static tests docs dist/Remora-pi/
+          cd dist
+          zip -qr "Remora-pi-${GITHUB_REF_NAME}.zip" Remora-pi -x '*.pyc' '*/__pycache__/*'
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remora-pi-${{ github.ref_name }}
+          path: dist/Remora-pi-*.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/Remora-pi-*.zip
